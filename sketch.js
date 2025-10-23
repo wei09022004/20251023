@@ -1,10 +1,13 @@
 // =================================================================
-// 步驟一：模擬成績數據接收 (續)
+// 步驟一：模擬成績數據接收
 // -----------------------------------------------------------------
 
+
+// 確保這是全域變數
 let finalScore = 0; 
 let maxScore = 0;
 let scoreText = ""; // 用於 p5.js 繪圖的文字
+
 
 // ----------------------------------------
 // 新增：煙火效果相關變數
@@ -13,7 +16,7 @@ let fireworks = []; // 儲存活躍的粒子
 let explosionTriggered = false; // 確保爆炸只發生一次
 
 // ----------------------------------------
-// 新增：簡易粒子類別
+// 新增：簡易粒子類別 - 實現煙火爆炸後的碎片
 // ----------------------------------------
 class Particle {
     constructor(x, y, col) {
@@ -33,7 +36,8 @@ class Particle {
 
     show() {
         noStroke();
-        fill(this.col, this.lifespan); // 使用漸變透明度
+        // 設置透明度 (alpha)
+        fill(hue(this.col), saturation(this.col), brightness(this.col), this.lifespan); 
         ellipse(this.pos.x, this.pos.y, 4, 4);
     }
 
@@ -44,7 +48,8 @@ class Particle {
 
 
 window.addEventListener('message', function (event) {
-    // ... (保持不變)
+    // 執行來源驗證...
+    // ...
     const data = event.data;
     
     if (data && data.type === 'H5P_SCORE_RESULT') {
@@ -59,6 +64,7 @@ window.addEventListener('message', function (event) {
         // ----------------------------------------
         // 新增：檢查是否滿分並觸發爆炸
         // ----------------------------------------
+        // 檢查是否滿分 (finalScore > 0 以避免未評分時觸發) 且尚未爆炸
         if (finalScore === maxScore && finalScore > 0 && !explosionTriggered) {
              // 觸發煙火效果
              triggerFirework(width / 2, height / 2);
@@ -82,9 +88,12 @@ window.addEventListener('message', function (event) {
 // 新增：觸發煙火爆炸的函式
 // ----------------------------------------
 function triggerFirework(x, y) {
-    let fireworkColor = color(random(255), random(255), random(255)); // 隨機顏色
+    // 啟用 HSB 模式以便控制顏色和亮度
+    colorMode(HSB, 255); 
+    let fireworkColor = color(random(255), 255, 255); // 隨機顏色
     let numParticles = 100; // 粒子數量
-
+    
+    // 產生粒子
     for (let i = 0; i < numParticles; i++) {
         fireworks.push(new Particle(x, y, fireworkColor));
     }
@@ -95,10 +104,10 @@ function triggerFirework(x, y) {
 // =================================================================
 // 步驟二：使用 p5.js 繪製分數 (在網頁 Canvas 上顯示)
 // -----------------------------------------------------------------
-// ...
-// ... (保留原有的 setup 函式)
+
 function setup() { 
-    // ... (其他設置)
+    // 設定 HSB 模式以利於煙火色彩控制
+    colorMode(RGB, 255); 
     createCanvas(windowWidth / 2, windowHeight / 2); 
     background(255); 
     noLoop(); // 只有在分數改變或煙火燃放時才繪製
@@ -107,16 +116,16 @@ function setup() {
 // score_display.js 中的 draw() 函數片段
 
 function draw() { 
+    
     // -----------------------------------------------------------------
     // C. (新增) 處理背景與煙火粒子更新
     // -----------------------------------------------------------------
-    // 讓背景有一點透明度 (trail effect)，但只有在有煙火時才如此
+    
+    // 如果有煙火粒子，使用半透明背景產生拖影 (trail) 效果
     if (fireworks.length > 0) {
-        // 煙火軌跡效果
-        background(255, 30); 
+        background(255, 30); // 淺色背景拖影
     } else {
-        // 沒有煙火時，清除背景
-        background(255); 
+        background(255); // 沒有煙火時，清除背景
     }
 
     // 更新並繪製所有煙火粒子
@@ -130,33 +139,34 @@ function draw() {
         }
     }
     
-    // 如果所有粒子都消失了，停止 loop
+    // 如果所有粒子都消失了，停止 loop (省資源)
     if (fireworks.length === 0) {
         noLoop();
     }
     
+    // -----------------------------------------------------------------
+    // A. 畫面反映與分數文本繪製
+    // -----------------------------------------------------------------
     
     // 計算百分比
-    let percentage = (finalScore / maxScore) * 100;
+    let percentage = maxScore > 0 ? (finalScore / maxScore) * 100 : 0;
 
     textSize(80); 
     textAlign(CENTER);
     
-    // -----------------------------------------------------------------
-    // A. 根據分數區間改變文本顏色和內容 (畫面反映一)
-    // -----------------------------------------------------------------
+    // 根據分數區間改變文本顏色和內容
     if (percentage >= 90) {
         // 滿分或高分：顯示鼓勵文本，使用鮮豔顏色
-        fill(0, 200, 50); // 綠色 [6]
+        fill(0, 200, 50); 
         text("恭喜！優異成績！", width / 2, height / 2 - 50);
         
     } else if (percentage >= 60) {
-        // 中等分數：顯示一般文本，使用黃色 [6]
+        // 中等分數：顯示一般文本，使用黃色
         fill(255, 181, 35); 
         text("成績良好，請再接再厲。", width / 2, height / 2 - 50);
         
-    } else if (percentage >=0) {
-        // 低分：顯示警示文本，使用紅色 [6]
+    } else if (percentage >= 0) {
+        // 低分：顯示警示文本，使用紅色
         fill(200, 0, 0); 
         text("需要加強努力！", width / 2, height / 2 - 50);
         
@@ -177,17 +187,15 @@ function draw() {
     // -----------------------------------------------------------------
     
     if (percentage >= 90) {
-        // 畫一個大圓圈代表完美 [7]
+        // 畫一個大圓圈代表完美
         fill(0, 200, 50, 150); // 帶透明度
         noStroke();
         circle(width / 2, height / 2 + 150, 150);
         
     } else if (percentage >= 60) {
-        // 畫一個方形 [4]
+        // 畫一個方形
         fill(255, 181, 35, 150);
         rectMode(CENTER);
         rect(width / 2, height / 2 + 150, 150, 150);
     }
-    
-    // ...
 }
